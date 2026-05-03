@@ -673,8 +673,9 @@ class JudgeSimulator:
             print_warn("No actions — bot chose not to send")
             return True
 
+        tid_sel = str(data.get("selected_trigger_id") or "")
         for action in actions:
-            self._score_and_display(action)
+            self._score_and_display(action, selected_trigger_id=tid_sel)
 
         return True
 
@@ -825,14 +826,23 @@ class JudgeSimulator:
             actions = data.get("actions", [])
             print_info(f"Batch {i//5 + 1}: {len(actions)} actions ({lat:.0f}ms)")
 
+            tid_sel = str(data.get("selected_trigger_id") or "")
             for action in actions:
-                self._score_and_display(action, verbose=False)
+                self._score_and_display(
+                    action, verbose=False, selected_trigger_id=tid_sel
+                )
 
         return True
 
-    def _score_and_display(self, action: Dict, verbose: bool = True):
+    def _score_and_display(
+        self,
+        action: Dict,
+        verbose: bool = True,
+        *,
+        selected_trigger_id: str = "",
+    ):
         """Score an action and display results."""
-        tid = action.get("trigger_id", "")
+        tid = selected_trigger_id or action.get("trigger_id", "")
         mid = action.get("merchant_id", "")
         cid = action.get("customer_id")
 

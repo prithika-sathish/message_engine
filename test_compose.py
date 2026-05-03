@@ -1,7 +1,7 @@
 from app.engine.signal_extraction import extract_signals
 from app.engine.decision_engine import make_decision
 from app.engine.blueprint_generator import generate_blueprint
-from app.engine.llm_renderer import render_message
+from app.main import compose
 import os
 
 # Toggle this
@@ -53,13 +53,23 @@ cases = [
 ]
 
 for case in cases:
+    d = case["input"]
+    out = compose(d["category"], d["merchant"], d["trigger"], None)
     signals = extract_signals(case["input"])
-    decision, rationale = make_decision(signals)
+    decision, _ = make_decision(signals)
     blueprint = generate_blueprint(decision, signals)
-    body, cta, send_as = render_message(blueprint)
+    ei = (out["rationale"] or {}).get("expected_impact", "")
+    pi = blueprint.get("predicted_impact", "")
+    assert ei == pi and ei, (
+        "expected_impact must match blueprint predicted_impact: "
+        f"{ei!r} vs {pi!r}"
+    )
+    forbidden = frozenset(("blueprint", "decision", "trigger_id"))
+    leaked = forbidden.intersection(out.keys())
+    assert not leaked, f"unexpected API fields: {leaked}"
 
     print("\n---", case["name"], "---")
-    print("BODY:", body)
-    print("CTA:", cta)
-    print("DECISION:", decision["intent_type"])
-    print("IMPACT:", blueprint.get("predicted_impact"))
+    print("BODY:", out["body"])
+    print("CTA:", out["cta"])
+    print("DECISION (internal):", decision["intent_type"])
+    print("IMPACT:", ei)

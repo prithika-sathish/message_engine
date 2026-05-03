@@ -249,21 +249,13 @@ def make_decision(signals: dict) -> Tuple[dict, dict]:
     if inactivity_days > 7:
         situation += f" and inactive for {inactivity_days} days"
 
-    expected_impact = ""
     risk_if_ignored = ""
     if intent_type == "push_offer":
-        expected_ctr_lift = min(0.3, abs(ctr_delta) * 0.5)
-        expected_impact = f"CTR recovery by ~{int(expected_ctr_lift * 100)}%"
         if ctr_delta < 0 and urgency > 0.7:
             risk_if_ignored = "further ranking drop"
-    elif intent_type == "upsell":
-        expected_impact = "increase average order value and margins"
     elif intent_type == "reactivate_user":
-        expected_impact = "restore visibility and re-engage dormant users"
         if ctr_delta < 0 and urgency > 0.7:
             risk_if_ignored = "prolonged inactivity may reduce discovery"
-    elif intent_type == "inform_insight":
-        expected_impact = "align performance with top peers"
 
     def rejection_reason(chosen: str, alt: str) -> str:
         listing = {"improve_listing", "update_listing"}
@@ -360,7 +352,6 @@ def make_decision(signals: dict) -> Tuple[dict, dict]:
             if intent_type == "upsell"
             else "contextual insight for merchant growth"
         ),
-        "expected_impact": expected_impact,
         "risk_if_ignored": risk_if_ignored,
         "confidence": "high"
         if abs(relative_gap) > 0.2 or inactivity_days > 7

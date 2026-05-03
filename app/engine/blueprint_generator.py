@@ -225,11 +225,12 @@ def generate_blueprint(decision: dict, signals: dict) -> dict:
             if lift_pp >= 2:
                 closing = (
                     f"A limited-time offer can recover ranking and improve CTR "
-                    f"by ~{lift_pp}% toward peers."
+                    f"by ~{lift_pp}% toward the peer median."
                 )
             else:
                 closing = (
-                    "A limited-time offer can recover ranking and improve CTR toward peers."
+                    "A limited-time offer can recover ranking and "
+                    "improve CTR toward the peer median."
                 )
         else:
             closing = "A sharper offer slot can widen reach without losing CTR."
@@ -304,9 +305,9 @@ def generate_blueprint(decision: dict, signals: dict) -> dict:
     elif intent == "push_offer":
         if trailing:
             predicted_impact = (
-                f"improve CTR by ~{lift_pp}% toward peers"
+                f"improve CTR by ~{lift_pp}% toward the peer median"
                 if lift_pp is not None
-                else "recover ranking and CTR toward peers"
+                else "recover ranking and CTR toward the peer median"
             )
         else:
             predicted_impact = "steady CTR plus wider promo reach"
@@ -353,7 +354,9 @@ def generate_blueprint(decision: dict, signals: dict) -> dict:
         body += "."
 
     if not str(predicted_impact).strip():
-        predicted_impact = "recover ranking and improve CTR toward peers"
+        predicted_impact = (
+            "recover ranking and improve CTR toward the peer median"
+        )
 
     cta_type, cta = _INTENT_CTA.get(intent) or _INTENT_CTA["nudge_engagement"]
     if cta_fallback:

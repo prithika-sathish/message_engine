@@ -140,6 +140,8 @@ def compose(
     signals = extract_signals(payload)
     decision, rationale = make_decision(signals)
     blueprint = generate_blueprint(decision, signals)
+    rationale = dict(rationale)
+    rationale["expected_impact"] = str(blueprint.get("predicted_impact") or "")
     body, cta, send_as = render_message(blueprint)
     try:
         suppression_key = get_suppression_key(signals)
@@ -152,8 +154,6 @@ def compose(
         "send_as": send_as,
         "suppression_key": suppression_key,
         "rationale": _public_rationale(rationale),
-        "blueprint": {k: v for k, v in blueprint.items() if k != "constraints"},
-        "decision": decision,
     }
     state_manager.state["last_compose_signals"] = signals
     state_manager.state["last_compose_payload"] = payload
@@ -249,14 +249,7 @@ def post_tick(req: TickRequest):
     merchant = blob.get("merchant") or {}
     customer = blob.get("customer") or {}
 
-    composed = compose(
-        category,
-        merchant,
-        trig_signal,
-        customer,
-    )
-    composed["trigger_id"] = trig_id
-
+    composed = compose(category, merchant, trig_signal, customer)
     actions.append(composed)
 
     state_manager.process_tick(
