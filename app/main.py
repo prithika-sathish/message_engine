@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
+from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, model_validator
 
 from app.engine.signal_extraction import extract_signals
@@ -19,6 +20,33 @@ _PUBLIC_RATIONALE_KEYS = (
     "expected_impact",
     "confidence",
 )
+
+
+_SKIP_ROOT_DISCOVERY_METHODS = frozenset({"HEAD", "OPTIONS"})
+
+
+def _v1_http_endpoints_by_method(app: FastAPI) -> Dict[str, List[str]]:
+    buckets: Dict[str, set[str]] = {}
+    for route in app.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        path = route.path or ""
+        if not path.startswith("/v1"):
+            continue
+        for method in route.methods:
+            m = method.upper()
+            if m in _SKIP_ROOT_DISCOVERY_METHODS:
+                continue
+            buckets.setdefault(m, set()).add(path)
+
+    preferred_order = ("POST", "GET", "PUT", "PATCH", "DELETE")
+    out: Dict[str, List[str]] = {}
+    for m in preferred_order:
+        if m in buckets:
+            out[m] = sorted(buckets.pop(m))
+    for m in sorted(buckets.keys()):
+        out[m] = sorted(buckets[m])
+    return out
 
 
 def _public_rationale(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -197,7 +225,7 @@ def root():
     return {
         "message": "Vera AI Message Engine is running",
         "docs": "/docs",
-        "endpoint": "/v1/compose",
+        "endpoints": _v1_http_endpoints_by_method(app),
     }
 
 
