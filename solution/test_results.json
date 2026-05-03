@@ -1,0 +1,45 @@
+{
+  "timestamp": "2026-05-03T14:07:29.704137",
+  "results": [
+    {
+      "merchant_name": "Spice Villa",
+      "trigger_type": "low_footfall",
+      "total_score": 16,
+      "weak_criteria": "specificity, category_fit, merchant_fit, trigger_relevance, engagement_compulsion",
+      "body_length": 99,
+      "body": "Low footfall now\nSpice Villa in Delhi\nOpportunity to increase footfall.\n\nReply YES to activate now!"
+    },
+    {
+      "merchant_name": "Sharma Salon",
+      "trigger_type": "lapsed_customer",
+      "total_score": 16,
+      "weak_criteria": "specificity, category_fit, merchant_fit, trigger_relevance, engagement_compulsion",
+      "body_length": 126,
+      "body": "Lapsed customer now\nSharma Salon in Mumbai\nOpportunity to increase walk-ins.\nReply YES to activate.\nReply YES to activate now!"
+    },
+    {
+      "merchant_name": "Care Clinic",
+      "trigger_type": "no_active_offer",
+      "total_score": 14,
+      "weak_criteria": "specificity, category_fit, merchant_fit, trigger_relevance, engagement_compulsion",
+      "body_length": 106,
+      "body": "No active offer now\nCare Clinic in Delhi\nOpportunity to increase consultation.\n\nReply YES to activate now!"
+    },
+    {
+      "merchant_name": "FitZone Gym",
+      "trigger_type": "competitor_benchmark",
+      "total_score": 14,
+      "weak_criteria": "specificity, category_fit, merchant_fit, trigger_relevance, engagement_compulsion",
+      "body_length": 105,
+      "body": "Competitor benchmark now\nFitZone Gym in Pune\nOpportunity to increase renewal.\n\nReply YES to activate now!"
+    },
+    {
+      "merchant_name": "FreshMart",
+      "trigger_type": "performance_report",
+      "total_score": 14,
+      "weak_criteria": "specificity, category_fit, merchant_fit, trigger_relevance, engagement_compulsion",
+      "body_length": 110,
+      "body": "Performance report now\nFreshMart in Bangalore\nOpportunity to increase basket size.\n\nReply YES to activate now!"
+    }
+  ]
+}
