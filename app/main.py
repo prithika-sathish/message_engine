@@ -1,7 +1,6 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import FastAPI, HTTPException
-from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, model_validator
 
 from app.engine.signal_extraction import extract_signals
@@ -20,59 +19,6 @@ _PUBLIC_RATIONALE_KEYS = (
     "expected_impact",
     "confidence",
 )
-
-
-_SKIP_ROOT_DISCOVERY_METHODS = frozenset({"HEAD", "OPTIONS"})
-
-_ROOT_PRIMARY = "/v1/context"
-_ROOT_HEALTH = "/v1/healthz"
-_ROOT_FLOW: Tuple[str, ...] = (
-    "POST /v1/context -> build decision context",
-    "POST /v1/tick -> update signals (optional)",
-    "POST /v1/reply -> generate final output",
-)
-
-
-def _v1_http_endpoints_by_method(app: FastAPI) -> Dict[str, List[str]]:
-    buckets: Dict[str, set[str]] = {}
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        path = route.path or ""
-        if not path.startswith("/v1"):
-            continue
-        for method in route.methods:
-            m = method.upper()
-            if m in _SKIP_ROOT_DISCOVERY_METHODS:
-                continue
-            buckets.setdefault(m, set()).add(path)
-
-    preferred_order = ("POST", "GET", "PUT", "PATCH", "DELETE")
-    out: Dict[str, List[str]] = {}
-    for m in preferred_order:
-        if m in buckets:
-            out[m] = sorted(buckets.pop(m))
-    for m in sorted(buckets.keys()):
-        out[m] = sorted(buckets[m])
-    return out
-
-
-def _root_discovery_payload(app: FastAPI) -> Dict[str, Any]:
-    endpoints = _v1_http_endpoints_by_method(app)
-    flat = {p for paths in endpoints.values() for p in paths}
-    payload: Dict[str, Any] = {
-        "message": "Vera AI Message Engine is running",
-        "docs": "/docs",
-        "primary": _ROOT_PRIMARY,
-        "endpoints": endpoints,
-        "flow": list(_ROOT_FLOW),
-    }
-    if _ROOT_HEALTH in flat:
-        payload["health"] = _ROOT_HEALTH
-    ver = getattr(app, "version", None)
-    if ver:
-        payload["version"] = ver
-    return payload
 
 
 def _public_rationale(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -248,7 +194,21 @@ class ComposeRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return _root_discovery_payload(app)
+    return {
+        "message": "Vera AI Message Engine is running",
+        "docs": "/docs",
+        "endpoints": {
+            "POST": ["/v1/context", "/v1/tick", "/v1/reply"],
+            "GET": ["/v1/healthz", "/v1/metadata"],
+        },
+        "flow": [
+            "POST /v1/context -> load merchant context",
+            "POST /v1/tick -> generate decision/message",
+            "POST /v1/reply -> handle follow-up",
+        ],
+        "health": "/v1/healthz",
+        "version": "2.0.0",
+    }
 
 
 @app.post("/v1/context")
