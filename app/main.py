@@ -24,6 +24,14 @@ _PUBLIC_RATIONALE_KEYS = (
 
 _SKIP_ROOT_DISCOVERY_METHODS = frozenset({"HEAD", "OPTIONS"})
 
+_ROOT_PRIMARY = "/v1/context"
+_ROOT_HEALTH = "/v1/healthz"
+_ROOT_FLOW: Tuple[str, ...] = (
+    "POST /v1/context -> build decision context",
+    "POST /v1/tick -> update signals (optional)",
+    "POST /v1/reply -> generate final output",
+)
+
 
 def _v1_http_endpoints_by_method(app: FastAPI) -> Dict[str, List[str]]:
     buckets: Dict[str, set[str]] = {}
@@ -47,6 +55,24 @@ def _v1_http_endpoints_by_method(app: FastAPI) -> Dict[str, List[str]]:
     for m in sorted(buckets.keys()):
         out[m] = sorted(buckets[m])
     return out
+
+
+def _root_discovery_payload(app: FastAPI) -> Dict[str, Any]:
+    endpoints = _v1_http_endpoints_by_method(app)
+    flat = {p for paths in endpoints.values() for p in paths}
+    payload: Dict[str, Any] = {
+        "message": "Vera AI Message Engine is running",
+        "docs": "/docs",
+        "primary": _ROOT_PRIMARY,
+        "endpoints": endpoints,
+        "flow": list(_ROOT_FLOW),
+    }
+    if _ROOT_HEALTH in flat:
+        payload["health"] = _ROOT_HEALTH
+    ver = getattr(app, "version", None)
+    if ver:
+        payload["version"] = ver
+    return payload
 
 
 def _public_rationale(r: Dict[str, Any]) -> Dict[str, Any]:
@@ -222,11 +248,7 @@ class ComposeRequest(BaseModel):
 
 @app.get("/")
 def root():
-    return {
-        "message": "Vera AI Message Engine is running",
-        "docs": "/docs",
-        "endpoints": _v1_http_endpoints_by_method(app),
-    }
+    return _root_discovery_payload(app)
 
 
 @app.post("/v1/context")
