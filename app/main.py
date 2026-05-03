@@ -200,6 +200,15 @@ class ComposeRequest(BaseModel):
     customer: Optional[Dict[str, Any]] = None
 
 
+@app.get("/")
+def root():
+    return {
+        "message": "Vera AI Message Engine is running",
+        "docs": "/docs",
+        "endpoint": "/v1/compose",
+    }
+
+
 @app.post("/v1/context")
 def post_context(req: ContextRequest):
     key = (req.scope, req.context_id)
