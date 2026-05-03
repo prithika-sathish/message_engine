@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field, model_validator
@@ -109,12 +109,49 @@ def _select_best_trigger(available_triggers: List[Dict[str, Any]]) -> Optional[D
     return sorted(available_triggers, key=_trigger_rank_key)[0]
 
 
-def _trigger_to_signal_shape(tr: Dict[str, Any]) -> Dict[str, Any]:
-    return {
-        "type": str(tr.get("type", tr.get("trigger_type", "recall"))),
-        "strength_score": float(tr.get("strength_score", tr.get("strength", 0.8))),
-        "recency_weight": float(tr.get("recency_weight", tr.get("recency", 1.0))),
-    }
+def _tick_enrich_candidate(tr: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(tr)
+    if "strength_score" not in out and "strength" not in out:
+        if "urgency" in out:
+            try:
+                u = float(out["urgency"])
+                out["strength_score"] = max(0.1, min(1.0, u / 5.0))
+            except (TypeError, ValueError):
+                out.setdefault("strength_score", 0.5)
+        else:
+            out.setdefault("strength_score", 0.5)
+    if "recency_weight" not in out and "recency" not in out:
+        out.setdefault("recency_weight", 1.0)
+    return out
+
+
+def _tick_normalize_available(raw: Sequence[Any]) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for item in raw or []:
+        if isinstance(item, str):
+            d = {"id": item, "trigger_id": item}
+        elif isinstance(item, dict):
+            d = dict(item)
+        else:
+            continue
+        out.append(_tick_enrich_candidate(d))
+    return out
+
+
+def _tick_trigger_for_signals(tr: Dict[str, Any]) -> Dict[str, Any]:
+    enriched = _tick_enrich_candidate(tr)
+    ttype = str(
+        enriched.get("type") or enriched.get("trigger_type") or enriched.get("kind") or "neutral"
+    )
+    try:
+        ss = float(enriched.get("strength_score", enriched.get("strength", 0.8)))
+    except (TypeError, ValueError):
+        ss = 0.8
+    try:
+        rw = float(enriched.get("recency_weight", enriched.get("recency", 1.0)))
+    except (TypeError, ValueError):
+        rw = 1.0
+    return {"type": ttype, "strength_score": ss, "recency_weight": rw}
 
 
 def compose(
@@ -176,7 +213,7 @@ class ContextRequest(BaseModel):
 class TickRequest(BaseModel):
     scope: str = Field(default="default")
     context_id: str
-    available_triggers: List[Dict[str, Any]] = Field(default_factory=list)
+    available_triggers: List[Any] = Field(default_factory=list)
 
 
 class ReplyRequest(BaseModel):
@@ -242,26 +279,31 @@ def post_tick(req: TickRequest):
         raise HTTPException(status_code=404, detail="unknown context")
 
     _ver, blob = entry
-    best = _select_best_trigger(req.available_triggers)
-    actions: List[Dict[str, Any]] = []
+    candidates = _tick_normalize_available(req.available_triggers)
+    if not candidates:
+        trig_blob = blob.get("trigger")
+        if isinstance(trig_blob, dict) and trig_blob:
+            candidates = [_tick_enrich_candidate(dict(trig_blob))]
+        else:
+            candidates = [_tick_enrich_candidate({"type": "neutral"})]
 
-    if best is None:
-        state_manager.process_tick({"scope": req.scope, "context_id": req.context_id})
-        return {
-            "actions": [],
-            "selected_trigger_id": None,
-            "context_version": _ver,
-        }
+    best = _select_best_trigger(candidates)
 
-    trig_signal = _trigger_to_signal_shape(best)
-    trig_id = best.get("trigger_id", best.get("id", ""))
+    input_data = dict(blob)
+    input_data["trigger"] = _tick_trigger_for_signals(best)
 
-    category = blob.get("category") or {}
-    merchant = blob.get("merchant") or {}
-    customer = blob.get("customer") or {}
+    signals = extract_signals(input_data)
+    decision, rationale = make_decision(signals)
+    blueprint = generate_blueprint(decision, signals)
+    body, cta, send_as = render_message(blueprint)
 
-    composed = compose(category, merchant, trig_signal, customer)
-    actions.append(composed)
+    state_manager.state["last_compose_signals"] = signals
+    state_manager.state["last_compose_payload"] = {
+        "category": input_data.get("category") or {},
+        "merchant": input_data.get("merchant") or {},
+        "trigger": input_data["trigger"],
+        "customer": input_data.get("customer") or {},
+    }
 
     state_manager.process_tick(
         {
@@ -272,9 +314,14 @@ def post_tick(req: TickRequest):
         }
     )
 
+    t_type = best.get("type")
+    tid = (
+        t_type if t_type not in (None, "") else (best.get("id") or best.get("trigger_id"))
+    )
+
     return {
-        "actions": actions,
-        "selected_trigger_id": trig_id,
+        "actions": [{"type": "message", "body": body, "cta": cta, "send_as": send_as}],
+        "selected_trigger_id": tid,
         "context_version": _ver,
     }
 
