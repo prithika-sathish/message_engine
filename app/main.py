@@ -213,6 +213,10 @@ class ContextRequest(BaseModel):
 class TickRequest(BaseModel):
     scope: str = Field(default="default")
     context_id: str
+    trigger: Optional[Dict[str, Any]] = Field(
+        default=None,
+        description="Contract trigger; selected_trigger_id echoes trigger.type",
+    )
     available_triggers: List[Any] = Field(default_factory=list)
 
 
@@ -314,14 +318,15 @@ def post_tick(req: TickRequest):
         }
     )
 
-    t_type = best.get("type")
-    tid = (
-        t_type if t_type not in (None, "") else (best.get("id") or best.get("trigger_id"))
+    trig_in = req.trigger if isinstance(req.trigger, dict) else None
+    trigger_type = trig_in.get("type") if trig_in else None
+    selected_trigger_id = (
+        str(trigger_type) if trigger_type not in (None, "") else ""
     )
 
     return {
         "actions": [{"type": "message", "body": body, "cta": cta, "send_as": send_as}],
-        "selected_trigger_id": tid,
+        "selected_trigger_id": selected_trigger_id,
         "context_version": _ver,
     }
 
