@@ -67,6 +67,7 @@ for case in cases:
     forbidden = frozenset(("blueprint", "decision", "trigger_id"))
     leaked = forbidden.intersection(out.keys())
     assert not leaked, f"unexpected API fields: {leaked}"
+    assert out.get("send_as") == "system"
 
     print("\n---", case["name"], "---")
     print("BODY:", out["body"])

@@ -16,6 +16,7 @@ STRICT RULES:
 * Preserve predicted impact exactly
 * Keep ≤ 2 sentences before CTA
 * Maintain causal flow: observation → implication → action → outcome
+* Write for the merchant owner: no insider words (hero, tags, retrieval, SKU, storefront signals, dashboards).
 * Use a crisp, professional tone (like a growth analyst)
 * Do NOT include CTA in the output
 

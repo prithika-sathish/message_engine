@@ -96,14 +96,6 @@ def _normalize_incoming_context(raw: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _context_counts() -> Dict[str, Any]:
-    total = len(_context_store)
-    by_scope: Dict[str, int] = {}
-    for scope, _ in _context_store:
-        by_scope[scope] = by_scope.get(scope, 0) + 1
-    return {"total": total, "by_scope": by_scope}
-
-
 def _trigger_rank_key(tr: Dict[str, Any]) -> Tuple[float, str]:
     strength = float(tr.get("strength_score", tr.get("strength", 0.5)))
     recency = float(tr.get("recency_weight", tr.get("recency", 1.0)))
@@ -288,7 +280,7 @@ def post_reply(req: ReplyRequest):
 
 @app.get("/v1/healthz")
 def get_healthz():
-    return {"status": "ok", "contexts_loaded": _context_counts()}
+    return {"status": "ok"}
 
 
 @app.get("/v1/metadata")
